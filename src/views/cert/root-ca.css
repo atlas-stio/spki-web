@@ -1,0 +1,143 @@
+.issue-page {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.issue-main {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.issue-help {
+    flex: 1 1 720px;
+    min-width: 400px;
+    max-width: 720px;
+    position: sticky;
+    top: 16px;
+}
+
+.help-card {
+    border-radius: 8px;
+    height: 80vh; /* 占屏幕高度的 60% */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* header 固定，不参与滚动 */
+.help-card :deep(.el-card__header) {
+    flex: 0 0 auto;
+}
+
+/* body 占满剩余高度并内部滚动 */
+.help-card :deep(.el-card__body) {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* 滚动条美化（可选） */
+.help-card :deep(.el-card__body)::-webkit-scrollbar {
+    width: 6px;
+}
+.help-card :deep(.el-card__body)::-webkit-scrollbar-thumb {
+    background: #dcdfe6;
+    border-radius: 3px;
+}
+.help-card :deep(.el-card__body)::-webkit-scrollbar-thumb:hover {
+    background: #c0c4cc;
+}
+.help-card :deep(.el-card__body)::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #303133;
+}
+
+.help-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #409eff;
+}
+
+.help-section {
+    margin-bottom: 18px;
+}
+
+.help-section:last-of-type {
+    margin-bottom: 8px;
+}
+
+.help-section h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+}
+
+.help-section p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #606266;
+}
+
+.help-section code {
+    padding: 1px 6px;
+    background: #f5f7fa;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #e6a23c;
+}
+
+.help-code {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #303133;
+    word-break: break-all;
+}
+
+.req {
+    display: inline-block;
+    margin: 0 2px;
+    padding: 0 4px;
+    font-size: 11px;
+    line-height: 16px;
+    color: #f56c6c;
+    background: #fef0f0;
+    border-radius: 3px;
+}
+
+@media (max-width: 1200px) {
+    .issue-page {
+        flex-direction: column;
+    }
+
+    .issue-help {
+        flex: 1 1 auto;
+        width: 100%;
+        max-width: none;
+        position: static;
+    }
+
+    .help-card {
+        height: auto; /* 窄屏堆叠时自然展开 */
+        max-height: none;
+    }
+    .help-card :deep(.el-card__body) {
+        overflow-y: visible;
+    }
+}
