@@ -2,6 +2,10 @@
     <div class="issue-page">
         <!-- 左侧：表单 -->
         <div class="issue-main">
+            <div class="page-title">
+                <h2>签发证书</h2>
+                <p>选择签发者 CA，填写主题与用途，为终端实体签发证书。</p>
+            </div>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="240px">
                 <el-form-item label="CA" prop="issuer.id">
                     <el-select v-model="form.issuer.id" filterable clearable placeholder="选择签发者 CA" style="max-width: 600px" :loading="issuerLoading">
@@ -18,7 +22,7 @@
                 </el-form-item>
 
                 <el-form-item label="名称" prop="title">
-                    <el-input v-model="form.title" placeholder="请输入证书名称" style="max-width: 600px" />
+                    <el-input v-model="form.title" placeholder="请输入证书名称" style="max-width: 600px" @input="clearFieldValidate('title')" />
                 </el-form-item>
 
                 <el-form-item label="使用 CSR">
@@ -27,10 +31,14 @@
                 </el-form-item>
 
                 <el-form-item v-if="useCsr" ref="csrItem" label="CSR PEM" prop="csrpem">
-                    <el-input v-model="form.csrpem" type="textarea" :rows="8" placeholder="-----BEGIN CERTIFICATE REQUEST-----" />
+                    <el-input
+                        v-model="form.csrpem"
+                        type="textarea"
+                        :rows="8"
+                        placeholder="-----BEGIN CERTIFICATE REQUEST-----"
+                        @input="clearFieldValidate('csrpem')" />
                 </el-form-item>
 
-                <!-- 使用 CSR 时隐藏密钥算法，公钥由 CSR 提供 -->
                 <el-form-item v-if="!useCsr" label="密钥算法" required>
                     <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap">
                         <el-radio-group v-model="form.key.algo" @change="onAlgoChange">
@@ -50,7 +58,6 @@
                     </div>
                 </el-form-item>
 
-                <!-- 签名算法：由所选 CA 的密钥类型决定 -->
                 <el-form-item label="签名算法" prop="signatureAlgorithm">
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
                         <el-radio-group v-model="form.signatureAlgorithm" :disabled="!issuerKeyAlgo">
@@ -62,29 +69,26 @@
                     </div>
                 </el-form-item>
 
-                <!-- 通用名 CN：后面带“更多”按钮 -->
-                <el-form-item label="通用名 (CN)" prop="names.CN">
+                <el-form-item label="主题 (Subject)" required>
                     <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 600px">
-                        <el-input v-model="form.names.CN" placeholder="如 www.example.com" style="flex: 1" />
-                        <el-button type="primary" plain @click="openMore">更多</el-button>
-                    </div>
-                </el-form-item>
-
-                <el-form-item v-if="subjectConfirmed && subjectText" label="主题 (Subject)">
-                    <div
-                        style="
-                            width: 100%;
-                            max-width: 600px;
-                            padding: 6px 10px;
-                            background: #f5f7fa;
-                            border-radius: 4px;
-                            font-family: Consolas, Monaco, monospace;
-                            font-size: 13px;
-                            color: #303133;
-                            word-break: break-all;
-                            box-sizing: border-box;
-                        ">
-                        {{ subjectText }}
+                        <div
+                            style="
+                                flex: 1;
+                                min-height: 32px;
+                                padding: 0 10px;
+                                display: flex;
+                                align-items: center;
+                                background: #f5f7fa;
+                                border-radius: 4px;
+                                font-family: Consolas, Monaco, monospace;
+                                font-size: 13px;
+                                color: #303133;
+                                word-break: break-all;
+                                box-sizing: border-box;
+                            ">
+                            {{ subjectText || "\u00A0" }}
+                        </div>
+                        <el-button type="primary" plain @click="openMore">编辑</el-button>
                     </div>
                 </el-form-item>
 
@@ -107,10 +111,10 @@
                 </el-form-item>
 
                 <el-form-item label="DNS">
-                    <el-input v-model="dnsStr" placeholder="逗号分隔，如 a.com,b.com" style="max-width: 600px" />
+                    <el-input v-model="dnsStr" placeholder="逗号分隔，如 *.example.com,www.blogs.com" style="max-width: 600px" />
                 </el-form-item>
                 <el-form-item label="IP">
-                    <el-input v-model="ipStr" placeholder="逗号分隔，如 1.1.1.1,2.2.2.2" style="max-width: 600px" />
+                    <el-input v-model="ipStr" placeholder="逗号分隔，如 192.168.22.18,172.17.17.99" style="max-width: 600px" />
                 </el-form-item>
 
                 <el-form-item label="密钥用途（KeyUsage）">
@@ -132,6 +136,7 @@
                 <el-form-item>
                     <el-button type="primary" :loading="submitting" @click="submit">签发</el-button>
                     <el-button :disabled="submitting" @click="reset">重置</el-button>
+                    <el-button type="success" plain @click="openPreset">按用途辅助勾选</el-button>
                 </el-form-item>
             </el-form>
 
@@ -155,7 +160,7 @@
 
                 <div class="help-section">
                     <h4>签发者 CA</h4>
-                    <p>选择上级 CA，仅列出可签发终端证书的根 / 中间 CA，支持搜索。下拉项右侧会显示该 CA 的密钥类型（如 ECDSA 256 / RSA 2048）。</p>
+                    <p>选择上级 CA，仅列出可签发终端证书的根 / 中间 CA，。</p>
                 </div>
 
                 <div class="help-section">
@@ -173,19 +178,13 @@
                         <b>ECDSA P-256</b>：约 128 位，公钥 / 签名短、性能优，现代默认首选。<br />
                         <b>ECDSA P-384</b>：约 192 位，高安全场景。<br />
                         <b>ECDSA P-521</b>：约 256 位，最高等级，部分老客户端支持不佳。<br />
-                        <b>Ed25519</b>：无长度可选，安全强度约 128 位，现代、高效，但老系统（部分 Windows / Java）兼容性不如 ECDSA。
+                        <b>Ed25519</b>：无长度可选，安全强度约 128 位，现代、高效，兼容性略差。
                     </p>
                 </div>
 
                 <div class="help-section">
                     <h4>签名算法</h4>
-                    <p>
-                        由签发者 CA 私钥对证书签名时使用的哈希 / 签名方案（对应证书的 <code>signatureAlgorithm</code> 字段）。
-                        <span style="color: #e6a23c"
-                            >必须先选择 CA，选项会按 CA 的公钥类型自动过滤：CA 是 RSA 只能选 RSA 系列，是 ECDSA 只能选 ECDSA 系列，是 Ed25519 则固定
-                            ed25519。</span
-                        >
-                    </p>
+                    <p>由签发者 CA 私钥对证书签名时使用的哈希 。</p>
                     <p style="margin-top: 6px">
                         <b>RSA · PKCS#1 v1.5</b>：<code>sha256</code> / <code>sha384</code> / <code>sha512</code>，兼容性最好，几乎所有系统都支持。
                     </p>
@@ -193,169 +192,75 @@
                         <b>RSA · PSS</b>：<code>sha256pss</code> / <code>sha384pss</code> / <code>sha512pss</code>，随机化填充、有可证明安全，是 RSA
                         签名的现代推荐；但老系统（旧 Java / OpenSSL / 嵌入式设备）可能不支持或解析异常。<code>sha512pss</code> 要求 RSA ≥ 2048 位。
                     </p>
-                    <p style="margin-top: 6px">
-                        <b>ECDSA</b>：<code>sha256</code> / <code>sha384</code> / <code>sha512</code>，标准搭配为 P-256→SHA256、P-384→SHA384、P-521→SHA512（选
-                        CA 后已按 CA 曲线自动选默认值，可再手动调整）；错配技术可行但偏离互操作性惯例，无额外收益。
-                    </p>
+                    <p style="margin-top: 6px"><b>ECDSA</b>：<code>sha256</code> / <code>sha384</code> / <code>sha512</code></p>
                     <p style="margin-top: 6px"><b>Ed25519</b>：固定 <code>ed25519</code>，哈希内置不可选。</p>
-                    <p style="margin-top: 6px; color: #909399; font-size: 12px">
-                        提示：PSS 的盐长度需与哈希长度一致（SHA-256 对应 32 字节），否则严格实现（如 Go <code>crypto/x509</code>）可能验签失败。
-                    </p>
                 </div>
 
                 <div class="help-section">
                     <h4>推荐组合</h4>
-                    <p>
-                        <b>现代系统</b>：ECDSA P-256 + SHA256（签发者 CA 为 ECDSA P-256 时）。<br />
-                        <b>兼容优先</b>：RSA 2048 + <code>sha256</code>（PKCS#1 v1.5），适用于老设备 / IoT。<br />
-                        <b>高安全</b>：ECDSA P-384 + SHA384，或 RSA 3072 + <code>sha256pss</code>。<br />
-                        <b>RSA 想用现代填充</b>：用 <code>sha256pss</code> 替代 <code>sha256</code>，前提是确认下游（客户端、CRL/OCSP 校验方、审计系统）均支持
-                        PSS。
-                    </p>
-                    <p style="margin-top: 6px; color: #909399; font-size: 12px">
-                        没有兼容性包袱时，优先 ECDSA P-256 + SHA256；有老设备 / IoT 时，推荐 RSA 2048 + SHA256（PKCS#1 v1.5）。
-                    </p>
+                    <p>在左侧帮助信息中查看更多</p>
                 </div>
 
                 <div class="help-section">
                     <h4>主题 (Subject)</h4>
-                    <p>CN 通用名<span class="req">必填</span>；点击「更多」填写 C / ST / L / O / OU，其中 O、OU<span class="req">必填</span></p>
+                    <p>点击右侧「编辑」打开弹窗填写主题。</p>
                 </div>
 
                 <div class="help-section">
                     <h4>有效期</h4>
-                    <p>支持天 / 月 / 年，实际到期可能受 CA 策略截断。终端证书通常设置较短有效期（如 90 天 ~ 1 年），配合自动续期。</p>
+                    <p>支持天 / 月 / 年。</p>
                 </div>
 
                 <div class="help-section">
                     <h4>主题密钥标识符 (SKI)</h4>
-                    <p>Subject Key Identifier 的哈希算法，默认 <code>SHA-1</code>。</p>
+                    <p>Subject Key Identifier 的哈希算法。</p>
                 </div>
 
                 <div class="help-section">
                     <h4>DNS / IP（SAN）</h4>
-                    <p>逗号分隔，如 <code>a.com,b.com</code>、<code>1.1.1.1</code>。<br /></p>
+                    <p>逗号分隔，如 <code>*.example.com,www.blogs.com</code>、<code>192.168.22.18,172.17.17.99</code>。<br /></p>
                 </div>
 
                 <div class="help-section">
                     <h4>KeyUsage / ExtKeyUsage</h4>
-                    <p>默认「数字签名 + 密钥加密」；扩展默认「服务端 + 客户端认证」，Web 服务保留 <code>serverAuth</code> 即可。</p>
-
-                    <p style="margin-top: 6px"><b>常用组合：</b></p>
-                    <p style="margin-top: 4px">
-                        <b>HTTPS 服务端</b>（Web / 反向代理）：KU <code>digitalSignature</code> + <code>keyEncipherment</code>，EKU
-                        <code>serverAuth</code>。<br />
-                        <b>HTTPS（ECDSA / Ed25519 密钥）</b>：KU 仅 <code>digitalSignature</code>，EKU <code>serverAuth</code>；这两种算法不做密钥加密，<code
-                            >keyEncipherment</code
-                        >
-                        无意义。<br />
-                        <b>OpenVPN 服务端</b>：KU <code>digitalSignature</code> + <code>keyEncipherment</code>，EKU <code>serverAuth</code>（<span
-                            style="color: #e6a23c"
-                            >必须带，否则客户端报 “Certificate does not have key usage extension”</span
-                        >）。<br />
-                        <b>OpenVPN 客户端</b>：KU <code>digitalSignature</code>，EKU <code>clientAuth</code>。<br />
-                        <b>Kubernetes API Server / etcd 服务端</b>：KU <code>digitalSignature</code> + <code>keyEncipherment</code>，EKU
-                        <code>serverAuth</code>。<br />
-                        <b>Kubernetes 客户端</b>（kubelet / scheduler / controller-manager）：KU <code>digitalSignature</code> +
-                        <code>keyEncipherment</code>，EKU <code>clientAuth</code>。<br />
-                        <b>Kubernetes etcd Peer / 通用 mTLS</b>：KU <code>digitalSignature</code> + <code>keyEncipherment</code>，EKU <code>serverAuth</code> +
-                        <code>clientAuth</code>（节点间互为客户端与服务端）。<br />
-                        <b>根 CA / 中间 CA</b>：KU <code>keyCertSign</code> + <code>crlSign</code>，EKU 留空（<span style="color: #e6a23c"
-                            >这两项只能用在 CA 证书上，末端证书勿勾选</span
-                        >）。
-                    </p>
-
-                    <p style="margin-top: 8px"><b>中英文对照：</b></p>
-                    <div class="ku-map">
-                        <div>
-                            <div class="ku-map-title">KeyUsage</div>
-                            <div><code>digitalSignature</code> 数字签名</div>
-                            <div><code>keyEncipherment</code> 密钥加密</div>
-                            <div><code>contentCommitment</code> 内容承诺</div>
-                            <div><code>dataEncipherment</code> 数据加密</div>
-                            <div><code>keyAgreement</code> 密钥协商</div>
-                            <div><code>encipherOnly</code> 仅加密</div>
-                            <div><code>decipherOnly</code> 仅解密</div>
-                            <div><code>keyCertSign</code> 证书签名</div>
-                            <div><code>crlSign</code> CRL 签名</div>
-                        </div>
-                        <div>
-                            <div class="ku-map-title">ExtKeyUsage</div>
-                            <div><code>serverAuth</code> 服务端认证</div>
-                            <div><code>clientAuth</code> 客户端认证</div>
-                            <div><code>codeSigning</code> 代码签名</div>
-                            <div><code>emailProtection</code> 邮件保护</div>
-                            <div><code>timeStamping</code> 时间戳</div>
-                            <div><code>ocspSigning</code> OCSP 签名</div>
-                        </div>
-                    </div>
-
-                    <p style="margin-top: 8px; color: #909399; font-size: 12px">
-                        提示：<code>digitalSignature</code> 是现代 TLS 的必选项（TLS 1.3、ECDSA / Ed25519 均依赖它）；<code>keyEncipherment</code> 仅对 RSA
-                        密钥交换（TLS 1.2 及以下）有意义。
-                    </p>
+                    <p style="margin-bottom: 6px; color: #e6a23c">可点底部「按用途辅助勾选」，选场景后勾选后再按需微调。</p>
                 </div>
-
-                <el-alert type="info" :closable="false" show-icon style="margin-top: 4px"> 带 <span class="req">必填</span> 标记的为必填项。 </el-alert>
             </el-card>
         </aside>
     </div>
 
-    <!-- 更多主题信息弹窗 -->
-    <el-dialog v-model="moreVisible" title="更多主题信息" width="520px" append-to-body>
-        <el-form ref="moreFormRef" :model="form" :rules="moreRules" label-width="120px">
-            <el-form-item label="国家 (C)" prop="names.C">
-                <el-input v-model="form.names.C" placeholder="如 CN" />
-            </el-form-item>
-            <el-form-item label="省份 (ST)" prop="names.ST">
-                <el-input v-model="form.names.ST" placeholder="如 Zhejiang" />
-            </el-form-item>
-            <el-form-item label="城市 (L)" prop="names.L">
-                <el-input v-model="form.names.L" placeholder="如 Hangzhou" />
-            </el-form-item>
-            <el-form-item label="组织 (O)" prop="names.O">
-                <el-input v-model="form.names.O" placeholder="如 PrivateSign" />
-            </el-form-item>
-            <el-form-item label="部门 (OU)" prop="names.OU">
-                <el-input v-model="form.names.OU" placeholder="如 Web" />
-            </el-form-item>
-            <el-form-item label="通用名 (CN)" prop="names.CN">
-                <el-input v-model="form.names.CN" placeholder="如 www.example.com" />
-            </el-form-item>
-        </el-form>
-        <template #footer>
-            <el-button @click="moreVisible = false">取消</el-button>
-            <el-button type="primary" @click="confirmMore">确定</el-button>
-        </template>
-    </el-dialog>
+    <CertMoreSubjectDialog ref="moreDialogRef" :form="form" @confirm="onMoreConfirm" />
+    <CertUsagePresetDialog ref="presetDialogRef" @apply="onPresetApply" />
 </template>
 
 <script>
 import { IssueEndEntity, ListCert } from "../../api/cacert.js";
 import { msg } from "../../utils/message.ts";
+import CertMoreSubjectDialog from "./components/CertMoreSubjectDialog.vue";
+import CertUsagePresetDialog from "./components/CertUsagePresetDialog.vue";
 
 const makeInitialForm = () => ({
     issuer: { id: "" },
     title: "",
     key: { algo: "rsa", size: 2048 },
-    signatureAlgorithm: "", // 初始为空，选中 CA 后设置默认值
-    names: { C: "", ST: "", L: "", O: "", OU: "", CN: "" },
+    signatureAlgorithm: "",
+    names: { C: undefined, ST: undefined, L: undefined, O: undefined, OU: undefined, CN: "" },
     expiry: { value: 3, unit: "m" },
     subjectKeyIdentifier: "sha1",
-    keyUsage: ["digitalSignature", "keyEncipherment"],
-    extKeyUsage: ["serverAuth", "clientAuth"],
+    keyUsage: [],
+    extKeyUsage: [],
     alt_names: { dns: [], ip: [] },
     csrpem: "",
 });
 
 const buildSubject = (names) => {
     const entries = [
+        ["CN", names.CN],
         ["C", names.C],
         ["ST", names.ST],
         ["L", names.L],
         ["O", names.O],
         ["OU", names.OU],
-        ["CN", names.CN],
     ];
     return entries
         .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "")
@@ -363,10 +268,8 @@ const buildSubject = (names) => {
         .join("");
 };
 
-// ECDSA 曲线与推荐签名哈希的映射（用于选 CA 后给默认签名算法）
 const ECDSA_SIZE_TO_SIG = { 256: "sha256", 384: "sha384", 521: "sha512" };
 
-// 按 CA 公钥算法返回签名算法选项
 const buildSigOptions = (algo) => {
     if (algo === "rsa") {
         return [
@@ -391,7 +294,6 @@ const buildSigOptions = (algo) => {
     return [];
 };
 
-// 按 CA 公钥算法 + 长度返回默认签名算法
 const defaultSigFor = (algo, size) => {
     if (algo === "rsa") return "sha256";
     if (algo === "ecdsa") return ECDSA_SIZE_TO_SIG[size] || "sha256";
@@ -401,6 +303,7 @@ const defaultSigFor = (algo, size) => {
 
 export default {
     name: "CertIssue",
+    components: { CertMoreSubjectDialog, CertUsagePresetDialog },
     data() {
         return {
             useCsr: false,
@@ -410,7 +313,6 @@ export default {
             ipStr: "",
             issuerOptions: [],
             issuerLoading: false,
-            moreVisible: false,
             subjectConfirmed: false,
             algoOptions: [
                 { label: "ECDSA", value: "ecdsa" },
@@ -443,7 +345,6 @@ export default {
             if (this.form.key.algo === "ecdsa") return [256, 384, 521];
             return [];
         },
-        // 当前选中的 CA 项
         selectedIssuer() {
             if (!this.form.issuer.id) return null;
             return this.issuerOptions.find((ca) => ca.certId === this.form.issuer.id) || null;
@@ -458,12 +359,9 @@ export default {
             return buildSigOptions(this.issuerKeyAlgo);
         },
         rules() {
-            // csrpem 规则常驻，不随 useCsr 动态增删，避免 rules 重算导致 Element 立即校验。
-            // 是否必填在 submit() 中手动兜底判断。
             return {
                 "issuer.id": [{ required: true, message: "选择签发者 CA", trigger: "change" }],
                 title: [{ required: true, message: "名称必填", trigger: "blur" }],
-                "names.CN": [{ required: true, message: "CN 必填", trigger: "blur" }],
                 signatureAlgorithm: [{ required: true, message: "签名算法必填", trigger: "change" }],
                 "expiry.value": [
                     { required: true, type: "number", message: "有效期必填", trigger: "blur" },
@@ -472,36 +370,24 @@ export default {
                 csrpem: [{ required: true, message: "CSR PEM 必填", trigger: "blur" }],
             };
         },
-        moreRules() {
-            return {
-                "names.CN": [{ required: true, message: "CN 必填", trigger: "blur" }],
-                "names.O": [{ required: true, message: "O 必填", trigger: "blur" }],
-                "names.OU": [{ required: true, message: "OU 必填", trigger: "blur" }],
-            };
-        },
         subjectText() {
             return buildSubject(this.form.names);
         },
     },
     watch: {
-        // 选中 CA 变化时，按 CA 的公钥算法重置签名算法
         "form.issuer.id"() {
             this.syncSignatureAlgorithm();
         },
-        // 使用 CSR 开关：不立即触发校验，等输入框渲染后清掉 Element 自动跑的首次校验
         useCsr(val) {
             if (val) {
-                // 打开时先清空历史值，防止上次残留
                 this.form.csrpem = "";
                 this.$nextTick(() => {
                     this.$refs.csrItem?.clearValidate?.();
                 });
-                // 兜底：部分 Element 版本会在渲染后异步校验
                 setTimeout(() => {
                     this.$refs.csrItem?.clearValidate?.();
                 }, 0);
             } else {
-                // 关闭时清空值与校验，避免残留
                 this.form.csrpem = "";
                 this.$nextTick(() => {
                     this.$refs.csrItem?.clearValidate?.();
@@ -513,12 +399,14 @@ export default {
         this.loadIssuers();
     },
     methods: {
+        clearFieldValidate(field) {
+            this.$refs.formRef?.clearValidate?.(field);
+        },
         async loadIssuers() {
             this.issuerLoading = true;
             try {
                 const res = await ListCert({ genre: [1, 2], hk: 1, offset: 0, limit: 100 });
                 this.issuerOptions = res?.payload?.items || [];
-                // 列表加载后如果已有选中的 issuer（比如回填），同步一次
                 this.syncSignatureAlgorithm();
             } catch (e) {
                 msg.error(e.message || "加载签发者 CA 列表失败");
@@ -527,7 +415,6 @@ export default {
                 this.issuerLoading = false;
             }
         },
-        // 按当前 CA 的公钥算法设置签名算法默认值
         syncSignatureAlgorithm() {
             const algo = this.issuerKeyAlgo;
             if (!algo) {
@@ -536,13 +423,11 @@ export default {
             }
             const options = buildSigOptions(algo);
             const def = defaultSigFor(algo, this.issuerKeySize);
-            // 如果当前值仍在可选集合中，保留；否则用默认
             const valid = options.some((o) => o.value === this.form.signatureAlgorithm);
             if (!valid) {
                 this.form.signatureAlgorithm = def;
             }
         },
-        // 新证书自身的密钥算法变化，不影响签名算法（签名算法由 CA 决定）
         onAlgoChange(algo) {
             if (algo === "rsa") {
                 this.form.key.size = 2048;
@@ -558,17 +443,19 @@ export default {
             else if (unit === "y") this.form.expiry.value = 1;
         },
         openMore() {
-            this.moreVisible = true;
-            this.$nextTick(() => this.$refs.moreFormRef?.clearValidate?.());
+            this.$refs.moreDialogRef?.open();
         },
-        async confirmMore() {
-            try {
-                await this.$refs.moreFormRef.validate();
-            } catch {
-                return;
-            }
+        onMoreConfirm(names) {
+            Object.assign(this.form.names, names);
             this.subjectConfirmed = true;
-            this.moreVisible = false;
+        },
+        openPreset() {
+            this.$refs.presetDialogRef?.open();
+        },
+        onPresetApply({ keyUsage, extKeyUsage, label }) {
+            this.form.keyUsage = [...keyUsage];
+            this.form.extKeyUsage = [...extKeyUsage];
+            msg.success(`已应用：${label}`);
         },
         splitComma(s) {
             return String(s || "")
@@ -582,14 +469,13 @@ export default {
             } catch {
                 return;
             }
-            // 使用 CSR 时手动兜底校验 CSR PEM（规则常驻但字段 v-if 隐藏时不会被校验）
-            if (this.useCsr && !String(this.form.csrpem || "").trim()) {
-                msg.warning("请填写 CSR PEM");
+            if (!String(this.form.names.CN || "").trim()) {
+                msg.warning("请填写「主题 (Subject)」");
+                this.openMore();
                 return;
             }
-            if (!this.form.names.O || !this.form.names.OU) {
-                msg.warning("请点击“更多”填写组织 (O) 与部门 (OU)");
-                this.openMore();
+            if (this.useCsr && !String(this.form.csrpem || "").trim()) {
+                msg.warning("请填写 CSR PEM");
                 return;
             }
             const body = {
@@ -626,7 +512,6 @@ export default {
             this.dnsStr = "";
             this.ipStr = "";
             this.result = "";
-            this.moreVisible = false;
             this.subjectConfirmed = false;
             this.$refs.formRef?.clearValidate?.();
             this.$nextTick(() => this.$refs.csrItem?.clearValidate?.());
@@ -637,24 +522,4 @@ export default {
 
 <style scoped>
 @import "./root-ca.css";
-.ku-map {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px 20px;
-    margin-top: 6px;
-    font-size: 13px;
-    color: #606266;
-    line-height: 1.9;
-}
-
-.ku-map-title {
-    font-weight: 600;
-    color: #303133;
-    margin-bottom: 4px;
-}
-
-.ku-map code {
-    display: inline-block;
-    min-width: 130px;
-}
 </style>

@@ -54,7 +54,7 @@
 
                 <div class="help-section">
                     <h4>有效期</h4>
-                    <p>CRL 的有效期<span class="req">必填</span>，支持天 / 月 / 年，默认 7 天。实际到期可能受 CA 策略截断。</p>
+                    <p>CRL 的有效期<span class="req">必填</span>，支持天 / 月 / 年。</p>
                 </div>
 
                 <div class="help-section">
@@ -64,7 +64,7 @@
 
                 <div class="help-section">
                     <h4>使用说明</h4>
-                    <p>文件为 PEM 编码，部署到依赖该 CA 的服务（如 Nginx、OpenSSL）用于校验证书是否已被吊销，建议定期重新下载。</p>
+                    <p>文件为 PEM 编码，建议定期重新下载。</p>
                 </div>
 
                 <el-alert type="info" :closable="false" show-icon style="margin-top: 4px"> 带 <span class="req">必填</span> 标记的为必填项。 </el-alert>

@@ -1,0 +1,125 @@
+/* =========================================================
+ * 公共样式：签发页布局 + 帮助文档内容
+ * ========================================================= */
+
+/* ---------- 签发页布局（全宽单列） ---------- */
+.issue-page {
+    position: relative;
+    width: 100%;
+}
+
+.issue-main {
+    width: 100%;
+    min-width: 0;
+}
+
+/* ---------- 帮助卡片（帮助页文档） ---------- */
+.help-card {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.help-card :deep(.el-card__header) {
+    padding: 0 0 12px;
+    border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+}
+
+.help-card :deep(.el-card__body) {
+    padding: 12px 0 0;
+}
+
+/* ---------- 帮助标题 ---------- */
+.help-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    color: #303133;
+}
+
+.help-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--el-color-primary, #409eff);
+    display: inline-block;
+}
+
+/* ---------- 帮助文档内容 ---------- */
+.help-section {
+    margin-bottom: 18px;
+}
+
+.help-section:last-of-type {
+    margin-bottom: 8px;
+}
+
+.help-section h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #303133;
+}
+
+.help-section p {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.8;
+    color: #606266;
+}
+
+.help-section code {
+    padding: 1px 6px;
+    background: #f5f7fa;
+    border-radius: 3px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #e6a23c;
+}
+
+.help-code {
+    margin-top: 8px;
+    padding: 8px 10px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    color: #303133;
+    word-break: break-all;
+}
+
+/* ---------- 必填标记 ---------- */
+.req {
+    display: inline-block;
+    margin: 0 2px;
+    padding: 0 4px;
+    font-size: 11px;
+    line-height: 16px;
+    color: #f56c6c;
+    background: #fef0f0;
+    border-radius: 3px;
+}
+
+/* ---------- KU / EKU 中英文对照表 ---------- */
+.ku-map {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 20px;
+    margin-top: 6px;
+    font-size: 13px;
+    color: #606266;
+    line-height: 1.9;
+}
+
+.ku-map-title {
+    font-weight: 600;
+    color: #303133;
+    margin-bottom: 4px;
+}
+
+.ku-map code {
+    display: inline-block;
+    min-width: 130px;
+}

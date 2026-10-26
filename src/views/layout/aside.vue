@@ -1,7 +1,7 @@
 <template>
-    <el-aside class="aside" width="200px">
+    <el-aside width="200px">
         <p style="text-align: center">PKI 证书管理</p>
-        <el-scrollbar class="menu-wrap">
+        <el-scrollbar>
             <el-menu :default-active="activePath" unique-opened router>
                 <!-- CA 管理 -->
                 <el-sub-menu index="ca">
@@ -32,20 +32,25 @@
                     <el-icon><Download /></el-icon>
                     <template #title><span>CRL 下载</span></template>
                 </el-menu-item>
+
+                <!-- 帮助 -->
+                <el-menu-item index="/help">
+                    <el-icon><QuestionFilled /></el-icon>
+                    <template #title><span>帮助信息</span></template>
+                </el-menu-item>
             </el-menu>
         </el-scrollbar>
     </el-aside>
 </template>
 
 <script>
-import { Document, CirclePlus, OfficeBuilding, Download } from "@element-plus/icons-vue";
+import { Document, CirclePlus, OfficeBuilding, Download, QuestionFilled } from "@element-plus/icons-vue";
 
 export default {
     name: "AppAside",
-    components: { Document, CirclePlus, OfficeBuilding, Download },
+    components: { Document, CirclePlus, OfficeBuilding, Download, QuestionFilled },
     data() {
         return {
-            // 兼容老的 $globalBus 通知方式（可选）
             busActivePath: "",
         };
     },
@@ -57,17 +62,16 @@ export default {
         },
     },
     created() {
-        // 保留旧的 globalBus 支持（页面若还在 emit，也能用）
         this.$globalBus?.on?.("updateActivePath", (data) => {
             this.busActivePath = data || "";
         });
     },
     beforeUnmount() {
-        // 防止内存泄漏（如果 globalBus 提供 off）
         this.$globalBus?.off?.("updateActivePath");
     },
 };
 </script>
+
 <style scoped>
 .el-aside {
     /* 处理菜单右边的阴影 */

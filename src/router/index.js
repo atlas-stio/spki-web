@@ -17,6 +17,7 @@ const routes = [
             { path: "cert/list", component: () => import("../views/cert/CertList.vue"), meta: { title: "证书列表" } },
             { path: "cert/detail/:id", component: () => import("../views/cert/CertDetail.vue"), meta: { title: "证书详情" }, props: true },
             { path: "crl", component: () => import("../views/cert/Crl.vue"), meta: { title: "CRL 下载" } },
+            { path: "/help", name: "HelpPage", component: () => import("../views/help/HelpPage.vue"), meta: { title: "帮助" } },
         ],
     },
     // 404 兜底：必须放最后
