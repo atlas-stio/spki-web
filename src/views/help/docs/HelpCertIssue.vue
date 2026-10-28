@@ -83,8 +83,44 @@
         </div>
 
         <div class="help-section">
-            <h4>DNS / IP（SAN）</h4>
-            <p>逗号分隔，如 <code>*.example.com,www.blogs.com</code>、<code>192.168.22.18,172.17.17.99</code>。<br /></p>
+            <h4>DNS（SAN）</h4>
+            <p>证书绑定的域名列表，逗号分隔，如 <code>*.example.com,www.blogs.com</code>。点击右侧放大按钮可在弹窗中编辑。</p>
+        </div>
+
+        <div class="help-section">
+            <h4>IP（SAN）</h4>
+            <p>证书绑定的 IP 地址列表，逗号分隔，如 <code>192.168.22.18,172.17.17.99</code>。点击右侧放大按钮可在弹窗中编辑。</p>
+        </div>
+
+        <div class="help-section">
+            <h4>更多设置</h4>
+            <p>以下字段均在「更多设置」弹窗内填写，均支持逗号分隔多个；点击每项右侧放大按钮可在弹窗中编辑，保存时换行 / 中文逗号会自动转成英文逗号。</p>
+
+            <p style="margin-top: 6px">
+                <b>Email（SAN）</b>：证书绑定的邮箱地址，写入 SAN 的 <code>rfc822Name</code>，如 <code>admin@example.com</code>。常用于 S/MIME 邮件签名 / 加密。
+            </p>
+            <p style="margin-top: 6px">
+                <b>URI（SAN）</b>：证书绑定的 URI，写入 SAN 的 <code>uniformResourceIdentifier</code>，如 <code>spiffe://example.org/workload</code>。常用于
+                SPIFFE / SPIRE 等工作负载身份体系，或需要把证书绑定到某个服务标识的场景。
+            </p>
+            <p style="margin-top: 6px">
+                <b>CRL 分发点</b>：写入证书的 CRL Distribution Points 扩展，指向签发者 CA 发布的 CRL 下载地址，如
+                <code>http://crl.example.com/inter001.crl</code>。客户端据此下载 CRL 判断证书是否被吊销；一般填签发者 CA 的 CRL 地址。
+            </p>
+            <p style="margin-top: 6px">
+                <b>OCSP URL</b>：写入证书的 Authority Information Access（AIA）扩展中的 OCSP 地址，如
+                <code>http://ocsp.example.com</code>。客户端据此实时查询证书吊销状态； 一般填签发者 CA 的 OCSP 响应服务地址。与 CRL 二选一或同时提供均可。
+            </p>
+            <p style="margin-top: 6px">
+                <b>签发者证书 URL</b>：写入证书 AIA 扩展中的 <code>caIssuers</code> 地址，指向签发者 CA 证书的下载地址，如
+                <code>http://ca.example.com/inter001.crt</code>。客户端据此补齐证书链、构建到根 CA 的信任路径；一般填签发者 CA 证书（.crt / .cer /
+                .pem）的下载地址。
+            </p>
+
+            <p style="margin-top: 8px; color: #909399; font-size: 12px">
+                提示：CRL 分发点、OCSP URL、签发者证书 URL 通常由签发者 CA 在签发时统一注入；手工填写一般用于测试环境或特殊链路需求，生产环境建议与 CA
+                实际发布地址保持一致。
+            </p>
         </div>
 
         <div class="help-section">
@@ -153,7 +189,6 @@ export default {
     name: "HelpCertIssue",
 };
 </script>
-<!-- template 与 script 不变，仅替换 style 段 -->
 <style scoped>
 @import "./help-docs.css";
 </style>

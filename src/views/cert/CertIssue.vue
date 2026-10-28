@@ -110,11 +110,41 @@
                     </el-radio-group>
                 </el-form-item>
 
+                <!-- DNS 与 IP 分两行 -->
                 <el-form-item label="DNS">
-                    <el-input v-model="dnsStr" placeholder="逗号分隔，如 *.example.com,www.blogs.com" style="max-width: 600px" />
+                    <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 600px">
+                        <el-input v-model="dnsStr" placeholder="逗号分隔，如 *.example.com,www.blogs.com" style="flex: 1" />
+                        <el-button :icon="FullScreen" title="放大编辑" @click="openExpand('dns')" />
+                    </div>
                 </el-form-item>
+
                 <el-form-item label="IP">
-                    <el-input v-model="ipStr" placeholder="逗号分隔，如 192.168.22.18,172.17.17.99" style="max-width: 600px" />
+                    <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 600px">
+                        <el-input v-model="ipStr" placeholder="逗号分隔，如 192.168.22.18,172.17.17.99" style="flex: 1" />
+                        <el-button :icon="FullScreen" title="放大编辑" @click="openExpand('ip')" />
+                    </div>
+                </el-form-item>
+
+                <el-form-item label="更多设置">
+                    <div style="display: flex; gap: 8px; align-items: center; width: 100%; max-width: 600px">
+                        <div
+                            style="
+                                flex: 1;
+                                min-height: 32px;
+                                padding: 0 10px;
+                                display: flex;
+                                align-items: center;
+                                background: #f5f7fa;
+                                border-radius: 4px;
+                                font-size: 13px;
+                                color: #606266;
+                                box-sizing: border-box;
+                            ">
+                            <span v-if="!moreSummary">Email / URI / CRL / OCSP / 签发者证书 URL</span>
+                            <span v-else>{{ moreSummary }}</span>
+                        </div>
+                        <el-button type="primary" plain @click="openMoreSettings">编辑</el-button>
+                    </div>
                 </el-form-item>
 
                 <el-form-item label="密钥用途（KeyUsage）">
@@ -217,8 +247,18 @@
                 </div>
 
                 <div class="help-section">
-                    <h4>DNS / IP（SAN）</h4>
-                    <p>逗号分隔，如 <code>*.example.com,www.blogs.com</code>、<code>192.168.22.18,172.17.17.99</code>。<br /></p>
+                    <h4>DNS（SAN）</h4>
+                    <p>逗号分隔，如 <code>*.example.com,www.blogs.com</code>。点击右侧放大按钮可在弹窗中编辑。</p>
+                </div>
+
+                <div class="help-section">
+                    <h4>IP（SAN）</h4>
+                    <p>逗号分隔，如 <code>192.168.22.18,172.17.17.99</code>。点击右侧放大按钮可在弹窗中编辑。</p>
+                </div>
+
+                <div class="help-section">
+                    <h4>更多设置</h4>
+                    <p>Email / URI（SAN）、CRL 分发点、OCSP URL、签发者证书 URL 均在「更多设置」弹窗内填写，均支持逗号分隔多个。</p>
                 </div>
 
                 <div class="help-section">
@@ -231,13 +271,30 @@
 
     <CertMoreSubjectDialog ref="moreDialogRef" :form="form" @confirm="onMoreConfirm" />
     <CertUsagePresetDialog ref="presetDialogRef" @apply="onPresetApply" />
+    <CertMoreSettingsDialog ref="moreSettingsRef" v-model="moreSettings" @confirm="onMoreSettingsConfirm" />
+
+    <!-- DNS / IP 放大编辑弹窗 -->
+    <el-dialog v-model="expandVisible" :title="expandField === 'dns' ? '编辑 DNS' : '编辑 IP'" width="640px" append-to-body>
+        <el-input
+            v-model="expandValue"
+            type="textarea"
+            :rows="10"
+            :placeholder="expandField === 'dns' ? '逗号或换行分隔，如 *.example.com,www.blogs.com' : '逗号或换行分隔，如 192.168.22.18,172.17.17.99'" />
+        <template #footer>
+            <el-button @click="expandVisible = false">取消</el-button>
+            <el-button type="primary" @click="confirmExpand">确定</el-button>
+        </template>
+    </el-dialog>
 </template>
 
 <script>
+import { markRaw } from "vue";
+import { FullScreen } from "@element-plus/icons-vue";
 import { IssueEndEntity, ListCert } from "../../api/cacert.js";
 import { msg } from "../../utils/message.ts";
 import CertMoreSubjectDialog from "./components/CertMoreSubjectDialog.vue";
 import CertUsagePresetDialog from "./components/CertUsagePresetDialog.vue";
+import CertMoreSettingsDialog from "./components/CertMoreSettingsDialog.vue";
 
 const makeInitialForm = () => ({
     issuer: { id: "" },
@@ -249,8 +306,16 @@ const makeInitialForm = () => ({
     subjectKeyIdentifier: "sha1",
     keyUsage: [],
     extKeyUsage: [],
-    alt_names: { dns: [], ip: [] },
+    alt_names: { dns: [], ip: [], email: [], uri: [] },
     csrpem: "",
+});
+
+const makeInitialMoreSettings = () => ({
+    email: "",
+    uri: "",
+    crl: "",
+    ocsp: "",
+    issuingCertUrl: "",
 });
 
 const buildSubject = (names) => {
@@ -303,7 +368,7 @@ const defaultSigFor = (algo, size) => {
 
 export default {
     name: "CertIssue",
-    components: { CertMoreSubjectDialog, CertUsagePresetDialog },
+    components: { CertMoreSubjectDialog, CertUsagePresetDialog, CertMoreSettingsDialog },
     data() {
         return {
             useCsr: false,
@@ -311,9 +376,17 @@ export default {
             result: "",
             dnsStr: "",
             ipStr: "",
+            // 更多设置（Email / URI / CRL / OCSP / 签发者证书 URL）
+            moreSettings: makeInitialMoreSettings(),
             issuerOptions: [],
             issuerLoading: false,
             subjectConfirmed: false,
+            // DNS / IP 放大编辑弹窗状态
+            expandVisible: false,
+            expandField: "", // 'dns' | 'ip'
+            expandValue: "",
+            // 图标组件，供模板 :icon 使用（markRaw 避免被响应式代理）
+            FullScreen: markRaw(FullScreen),
             algoOptions: [
                 { label: "ECDSA", value: "ecdsa" },
                 { label: "RSA", value: "rsa" },
@@ -372,6 +445,15 @@ export default {
         },
         subjectText() {
             return buildSubject(this.form.names);
+        },
+        moreSummary() {
+            const parts = [];
+            if (this.moreSettings.email.trim()) parts.push("Email");
+            if (this.moreSettings.uri.trim()) parts.push("URI");
+            if (this.moreSettings.crl.trim()) parts.push("CRL");
+            if (this.moreSettings.ocsp.trim()) parts.push("OCSP");
+            if (this.moreSettings.issuingCertUrl.trim()) parts.push("签发者证书 URL");
+            return parts.length ? `已填写：${parts.join(" / ")}` : "";
         },
     },
     watch: {
@@ -457,11 +539,35 @@ export default {
             this.form.extKeyUsage = [...extKeyUsage];
             msg.success(`已应用：${label}`);
         },
+        openMoreSettings() {
+            this.$refs.moreSettingsRef?.open();
+        },
+        onMoreSettingsConfirm(val) {
+            this.moreSettings = { ...val };
+        },
         splitComma(s) {
             return String(s || "")
                 .split(",")
                 .map((x) => x.trim())
                 .filter(Boolean);
+        },
+        // 打开 DNS / IP 放大编辑弹窗
+        openExpand(field) {
+            this.expandField = field;
+            this.expandValue = field === "dns" ? this.dnsStr : this.ipStr;
+            this.expandVisible = true;
+        },
+        // 确认回写：换行 / 中文逗号统一成英文逗号，兼容 splitComma
+        confirmExpand() {
+            const normalized = String(this.expandValue || "")
+                .replace(/\r?\n/g, ",")
+                .replace(/，/g, ",");
+            if (this.expandField === "dns") {
+                this.dnsStr = normalized;
+            } else {
+                this.ipStr = normalized;
+            }
+            this.expandVisible = false;
         },
         async submit() {
             try {
@@ -487,7 +593,12 @@ export default {
                 alt_names: {
                     dns: this.splitComma(this.dnsStr),
                     ip: this.splitComma(this.ipStr),
+                    email: this.splitComma(this.moreSettings.email),
+                    uri: this.splitComma(this.moreSettings.uri),
                 },
+                crlDistributionPoints: this.splitComma(this.moreSettings.crl),
+                ocspServer: this.splitComma(this.moreSettings.ocsp),
+                issuingCertificateURL: this.splitComma(this.moreSettings.issuingCertUrl),
             };
             if (!this.useCsr) {
                 body.csrpem = "";
@@ -511,8 +622,12 @@ export default {
             this.useCsr = false;
             this.dnsStr = "";
             this.ipStr = "";
+            this.moreSettings = makeInitialMoreSettings();
             this.result = "";
             this.subjectConfirmed = false;
+            this.expandVisible = false;
+            this.expandField = "";
+            this.expandValue = "";
             this.$refs.formRef?.clearValidate?.();
             this.$nextTick(() => this.$refs.csrItem?.clearValidate?.());
         },
