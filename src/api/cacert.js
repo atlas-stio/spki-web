@@ -17,6 +17,8 @@ export const IssueEndEntity = (data) => ajax(url + "/v1/spki/cert/endentity", "P
 export const ListCert = (params) => ajax(url + "/v1/spki/cert/list", "GET", params, null);
 export const FindRootCA = (id) => ajax(`${url}/v1/spki/cert/${id}/root`, "GET", null, null);
 export const ListCertVersions = (id) => ajax(`${url}/v1/spki/cert/${id}/versions`, "GET", null, null);
+export const GetCertIssueCfg = (id) => ajax(`${url}/v1/spki/cert/${id}/issuecfg`, "GET", null, null);
+export const GetCert = (id) => ajax(`${url}/v1/spki/cert/${id}`, "GET", null, null);
 
 // ==================== 证书操作 ====================
 

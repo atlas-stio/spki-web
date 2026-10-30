@@ -5,7 +5,15 @@
             <div class="page-title">
                 <h2>签发证书</h2>
                 <p>选择签发者 CA，填写主题与用途，为终端实体签发证书。</p>
+                <el-alert
+                    v-if="fromCertId"
+                    type="primary"
+                    :closable="true"
+                    show-icon
+                    style="margin: 12px 0 0 0; max-width: 840px"
+                    title="已按来源证书的签发配置填充模板，请确认签发者 CA 后提交" />
             </div>
+
             <el-form ref="formRef" :model="form" :rules="rules" label-width="240px">
                 <el-form-item label="CA" prop="issuer.id">
                     <el-select v-model="form.issuer.id" filterable clearable placeholder="选择签发者 CA" style="max-width: 600px" :loading="issuerLoading">
@@ -290,7 +298,7 @@
 <script>
 import { markRaw } from "vue";
 import { FullScreen } from "@element-plus/icons-vue";
-import { IssueEndEntity, ListCert } from "../../api/cacert.js";
+import { IssueEndEntity, ListCert, GetCertIssueCfg } from "../../api/cacert.js";
 import { msg } from "../../utils/message.ts";
 import CertMoreSubjectDialog from "./components/CertMoreSubjectDialog.vue";
 import CertUsagePresetDialog from "./components/CertUsagePresetDialog.vue";
@@ -366,6 +374,9 @@ const defaultSigFor = (algo, size) => {
     return "";
 };
 
+// 统一把数组 / 字符串转成逗号分隔字符串
+const toCommaStr = (v) => (Array.isArray(v) ? v.join(",") : v || "");
+
 export default {
     name: "CertIssue",
     components: { CertMoreSubjectDialog, CertUsagePresetDialog, CertMoreSettingsDialog },
@@ -376,6 +387,8 @@ export default {
             result: "",
             dnsStr: "",
             ipStr: "",
+            // 来源证书 id（从详情页「新签」跳转时携带）
+            fromCertId: "",
             // 更多设置（Email / URI / CRL / OCSP / 签发者证书 URL）
             moreSettings: makeInitialMoreSettings(),
             issuerOptions: [],
@@ -477,8 +490,12 @@ export default {
             }
         },
     },
-    mounted() {
-        this.loadIssuers();
+    async mounted() {
+        this.fromCertId = this.$route.query.fromCertId || "";
+        await this.loadIssuers();
+        if (this.fromCertId) {
+            await this.applyIssueCfg(this.fromCertId);
+        }
     },
     methods: {
         clearFieldValidate(field) {
@@ -569,6 +586,72 @@ export default {
             }
             this.expandVisible = false;
         },
+        // 拉取来源证书的签发配置并回填表单
+        async applyIssueCfg(certId) {
+            try {
+                const res = await GetCertIssueCfg(certId);
+                // 兼容 { payload: { issuecfg } } 与直接返回 issuecfg 两种结构
+                const cfg = res?.payload?.issuecfg || res?.payload || res;
+                if (!cfg || typeof cfg !== "object") return;
+                this.fillFromIssueCfg(cfg);
+                msg.success("已按来源证书填充签发模板");
+            } catch (e) {
+                msg.warning(e.message || "加载签发模板失败，可手动填写");
+            }
+        },
+        fillFromIssueCfg(cfg) {
+            const form = this.form;
+
+            // 标题
+            if (cfg.title) form.title = cfg.title;
+
+            // 密钥算法 / 长度
+            if (cfg.key?.algo) {
+                form.key.algo = cfg.key.algo;
+                // ed25519 无 size，置 0 避免残留旧值
+                form.key.size = cfg.key.algo === "ed25519" ? 0 : cfg.key.size || (cfg.key.algo === "rsa" ? 2048 : 256);
+            }
+
+            // 主题 names（只覆盖接口返回的字段）
+            if (cfg.names && typeof cfg.names === "object") {
+                Object.keys(form.names).forEach((k) => {
+                    if (cfg.names[k] !== undefined && cfg.names[k] !== null) {
+                        form.names[k] = cfg.names[k];
+                    }
+                });
+            }
+
+            // 有效期：issuecfg.expiry 可能为空串；支持 "3m" 形式
+            if (cfg.expiry && /^\d+[dmy]$/.test(cfg.expiry)) {
+                form.expiry.value = parseInt(cfg.expiry, 10);
+                form.expiry.unit = cfg.expiry.slice(-1);
+            }
+
+            // SKI
+            if (cfg.subjectKeyIdentifier) form.subjectKeyIdentifier = cfg.subjectKeyIdentifier;
+
+            // KeyUsage / ExtKeyUsage
+            if (Array.isArray(cfg.keyUsage)) form.keyUsage = [...cfg.keyUsage];
+            if (Array.isArray(cfg.extKeyUsage)) form.extKeyUsage = [...cfg.extKeyUsage];
+
+            // SAN
+            this.dnsStr = toCommaStr(cfg.alt_names?.dns);
+            this.ipStr = toCommaStr(cfg.alt_names?.ip);
+
+            // 更多设置
+            this.moreSettings = {
+                email: toCommaStr(cfg.alt_names?.email),
+                uri: toCommaStr(cfg.alt_names?.uri),
+                crl: toCommaStr(cfg.crlDistributionPoints),
+                ocsp: toCommaStr(cfg.ocspServer),
+                issuingCertUrl: toCommaStr(cfg.issuingCertificateURL),
+            };
+
+            // 签名算法：issuecfg 给了就先用；用户选 CA 后若非法会被 syncSignatureAlgorithm 修正
+            if (cfg.signatureAlgorithm) {
+                form.signatureAlgorithm = cfg.signatureAlgorithm;
+            }
+        },
         async submit() {
             try {
                 await this.$refs.formRef.validate();
@@ -624,6 +707,7 @@ export default {
             this.ipStr = "";
             this.moreSettings = makeInitialMoreSettings();
             this.result = "";
+            this.fromCertId = "";
             this.subjectConfirmed = false;
             this.expandVisible = false;
             this.expandField = "";

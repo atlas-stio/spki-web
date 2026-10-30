@@ -29,10 +29,11 @@
                     <el-button type="danger" @click="openRevoke">吊销</el-button>
                     <el-button type="warning" @click="remove">删除</el-button>
                     <el-button type="warning" @click="openRenew">续签</el-button>
+                    <el-button v-if="isEndEntity" type="primary" @click="onNewIssue">新签</el-button>
                     <el-button type="info" @click="onViewChain">查看链</el-button>
                     <el-button type="info" @click="onViewRoot">根 CA</el-button>
                     <el-button type="success" @click="onDownloadChain">下载链</el-button>
-                    <el-button type="success" @click="onDownloadBundle">下载 ZIP</el-button>
+                    <el-button v-if="isEndEntity" type="success" @click="onDownloadBundle">下载 ZIP</el-button>
                     <el-button type="primary" @click="load">刷新</el-button>
                 </div>
 
@@ -129,7 +130,7 @@
 import { ElMessageBox } from "element-plus";
 import { DocumentCopy } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
-import { ListCert, ListCertVersions, RenewCert, RevokeCert, DeleteCert, ExportCertChain, ExportCertChainWithMeta, ExportCertBundle } from "../../api/cacert.js";
+import { GetCert, ListCertVersions, RenewCert, RevokeCert, DeleteCert, ExportCertChain, ExportCertChainWithMeta, ExportCertBundle } from "../../api/cacert.js";
 import { withDelay, getFilenameFromResponse } from "../../utils/common.js";
 import { msg } from "../../utils/message.ts";
 
@@ -186,6 +187,12 @@ export default {
             viewContent: "",
             viewFileName: "",
         };
+    },
+    computed: {
+        // 仅末端证书（genre === 3）允许「新签」「下载 ZIP」
+        isEndEntity() {
+            return Number(this.info?.genre) === 3;
+        },
     },
     watch: {
         "$route.params.id"(n, o) {
@@ -245,9 +252,14 @@ export default {
             }
             this.loading = true;
             try {
-                const raw = await withDelay(() => ListCert({}));
-                const data = unwrap(raw);
-                const cur = (data?.items || []).find((i) => i.certId === id);
+                // 按 id 精确获取证书详情，不再依赖 list 全量返回
+                let cur = null;
+                try {
+                    const raw = await withDelay(() => GetCert(id));
+                    cur = unwrap(raw);
+                } catch {
+                    cur = null;
+                }
                 this.info = cur || null;
                 if (cur) {
                     const rawV = await withDelay(() => ListCertVersions(id));
@@ -290,6 +302,12 @@ export default {
             } finally {
                 this.renewing = false;
             }
+        },
+        // 新签：跳转到签发页，携带来源证书 id，由签发页拉 issuecfg 回填
+        onNewIssue() {
+            const id = this.$route.params.id;
+            if (!id) return;
+            this.$router.push({ path: "/cert/issue", query: { fromCertId: id } });
         },
         async onViewChain() {
             const id = this.$route.params.id;
