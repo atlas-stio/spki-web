@@ -90,6 +90,7 @@ import { withDelay, convertToLimitOffset } from "../../utils/common.js";
 import { msg } from "../../utils/message.ts";
 
 const PAGE_SIZE_KEY = "turtle_def_page_size";
+const DEFAULT_GENRES = [1, 2];
 
 const MIME_MAP = {
     crt: "application/x-x509-ca-cert",
@@ -108,7 +109,7 @@ export default {
         return {
             GENRE_MAP: { 1: "根 CA", 2: "中间 CA", 3: "末端证书" },
             STATE_MAP: { V: "有效", R: "已吊销", E: "已过期" },
-            genres: [1, 2],
+            genres: [],
             hasKey: undefined,
             items: [],
             loading: false,
@@ -167,7 +168,7 @@ export default {
             this.loading = true;
             try {
                 const params = convertToLimitOffset(this.page, this.pageSize);
-                if (this.genres.length) params.genre = this.genres;
+                params.genre = this.genres.length ? this.genres : DEFAULT_GENRES;
                 if (this.hasKey === 0 || this.hasKey === 1) params.hk = this.hasKey;
                 const res = await withDelay(() => ListCert(params));
                 this.items = res?.payload?.items || [];
