@@ -56,25 +56,14 @@ export default {
     },
     computed: {
         activePath() {
-            const path = this.$route.path || this.busActivePath || "/cert/list";
-            if (path.startsWith("/cert/detail")) return "/cert/list";
-            return path;
+            return this.$route.meta.am || this.$route.path;
         },
-    },
-    created() {
-        this.$globalBus?.on?.("updateActivePath", (data) => {
-            this.busActivePath = data || "";
-        });
-    },
-    beforeUnmount() {
-        this.$globalBus?.off?.("updateActivePath");
     },
 };
 </script>
 
 <style scoped>
 .el-aside {
-    /* 处理菜单右边的阴影 */
     background-color: #ffffff;
     .el-menu {
         border-right: none;
