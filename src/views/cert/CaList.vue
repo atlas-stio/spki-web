@@ -20,6 +20,9 @@
             <el-table-column label="类型" width="110">
                 <template #default="{ row }">{{ GENRE_MAP[row.genre] || row.genre }}</template>
             </el-table-column>
+            <el-table-column label="证书层级" width="100" align="center">
+                <template #default="{ row }"> L{{ row.cdh }} </template>
+            </el-table-column>
             <el-table-column label="状态" width="100">
                 <template #default="{ row }">
                     <div class="status-cell">

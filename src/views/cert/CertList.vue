@@ -8,6 +8,9 @@
             <el-table-column type="index" label="#" width="60" />
             <el-table-column prop="title" label="标题" show-overflow-tooltip />
             <el-table-column prop="subject" label="Subject" show-overflow-tooltip />
+            <el-table-column label="证书层级" width="100" align="center">
+                <template #default="{ row }"> L{{ row.cdh }} </template>
+            </el-table-column>
             <el-table-column label="状态" width="100">
                 <template #default="{ row }">
                     <div class="status-cell">
@@ -29,9 +32,11 @@
             </el-table-column>
             <el-table-column label="操作" width="240" fixed="right">
                 <template #default="{ row }">
-                    <el-button link type="primary" @click="$router.push(`/cert/detail/${row.certId}`)">详情</el-button>
-                    <el-button link type="primary" @click="onViewRoot(row)">查看CA</el-button>
-                    <el-button link type="primary" @click="onDownloadBundle(row)">下载证书</el-button>
+                    <el-space>
+                        <el-button link type="primary" @click="$router.push(`/cert/detail/${row.certId}`)">详情</el-button>
+                        <el-button link type="primary" @click="onViewRoot(row)">查看CA</el-button>
+                        <el-button link type="primary" @click="onDownloadBundle(row)">下载证书</el-button>
+                    </el-space>
                 </template>
             </el-table-column>
         </el-table>

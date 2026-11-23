@@ -10,9 +10,30 @@
                         </div>
                     </el-descriptions-item>
                     <el-descriptions-item label="标题">{{ info.title || "-" }}</el-descriptions-item>
-                    <el-descriptions-item label="Subject" :span="2">{{ info.subject || "-" }}</el-descriptions-item>
+                    <el-descriptions-item label="Subject">{{ info.subject || "-" }}</el-descriptions-item>
+                    <el-descriptions-item label="当前版本">{{ info.revision ?? "-" }}</el-descriptions-item>
                     <el-descriptions-item label="类型">{{ GENRE_MAP[info.genre] || info.genre }}</el-descriptions-item>
-                    <el-descriptions-item label="证书链">{{ info.chain }}</el-descriptions-item>
+                    <el-descriptions-item label="证书链">
+                        <div class="chain-inline">
+                            <span class="chain-inline-text">{{ info.chain || "-" }}</span>
+                            <el-popover v-if="chainLevels.length" placement="bottom-start" trigger="click" :width="520" popper-class="chain-popover">
+                                <template #reference>
+                                    <el-button link :icon="Share" title="查看层级结构" />
+                                </template>
+                                <div class="chain-tree">
+                                    <div v-for="(item, idx) in chainLevels" :key="idx" class="chain-line">
+                                        <span class="chain-indent" :style="{ paddingLeft: idx * 20 + 'px' }"></span>
+                                        <span v-if="idx > 0" class="chain-branch">└── </span>
+                                        <span :class="idx === chainLevels.length - 1 ? 'chain-leaf' : 'chain-node'">{{ item }}</span>
+                                        <el-tag size="small" class="chain-level-tag" effect="plain">L{{ idx + 1 }}</el-tag>
+                                        <el-tag size="small" class="chain-type-tag" :type="chainTypeTag(idx, chainLevels.length).type" effect="light">
+                                            {{ chainTypeTag(idx, chainLevels.length).label }}
+                                        </el-tag>
+                                    </div>
+                                </div>
+                            </el-popover>
+                        </div>
+                    </el-descriptions-item>
                     <el-descriptions-item label="状态">
                         <div class="status-cell">
                             <span class="status-dot" :class="getStatusClass(info.state)"></span>
@@ -21,7 +42,6 @@
                     </el-descriptions-item>
                     <el-descriptions-item label="序列号">{{ info.serial || "-" }}</el-descriptions-item>
                     <el-descriptions-item label="生效时间">{{ fmt(info.notBefore) }}</el-descriptions-item>
-                    <el-descriptions-item label="当前版本">{{ info.revision ?? "-" }}</el-descriptions-item>
                     <el-descriptions-item label="到期时间">{{ fmt(info.notAfter) }}</el-descriptions-item>
                 </el-descriptions>
 
@@ -128,7 +148,7 @@
 
 <script>
 import { ElMessageBox } from "element-plus";
-import { DocumentCopy } from "@element-plus/icons-vue";
+import { DocumentCopy, Share } from "@element-plus/icons-vue";
 import dayjs from "dayjs";
 import { GetCert, ListCertVersions, RenewCert, RevokeCert, DeleteCert, ExportCertChain, ExportCertChainWithMeta, ExportCertBundle } from "../../api/cacert.js";
 import { withDelay, getFilenameFromResponse } from "../../utils/common.js";
@@ -153,11 +173,11 @@ const unwrap = (res) => {
 export default {
     name: "CertDetail",
     setup() {
-        return { DocumentCopy };
+        return { DocumentCopy, Share };
     },
     data() {
         return {
-            GENRE_MAP: { 1: "根 CA", 2: "中间 CA", 3: "末端证书" },
+            GENRE_MAP: { 1: "根 CA", 2: "中间 CA", 3: "服务证书" },
             STATE_MAP: { V: "有效", R: "已吊销", E: "已过期" },
             REVOKE_REASONS: [
                 { value: "unspecified", label: "未指定 (unspecified)" },
@@ -189,9 +209,18 @@ export default {
         };
     },
     computed: {
-        // 仅末端证书（genre === 3）允许「新签」「下载 ZIP」
+        // 仅服务证书（genre === 3）允许「新签」「下载 ZIP」
         isEndEntity() {
             return Number(this.info?.genre) === 3;
+        },
+        // 证书链层级：按 / 拆分，过滤空段
+        chainLevels() {
+            const chain = this.info?.chain;
+            if (!chain || typeof chain !== "string") return [];
+            return chain
+                .split("/")
+                .map((s) => s.trim())
+                .filter(Boolean);
         },
     },
     watch: {
@@ -234,6 +263,13 @@ export default {
             const raw = name || fallback;
             return String(raw).replace(/[\\/:*?"<>|\s]+/g, "_");
         },
+        // 证书链层级类型：按链结构映射（第1层根CA、最后1层服务证书、其余中间CA）
+        chainTypeTag(idx, total) {
+            if (total <= 1) return { label: "根 CA", type: "danger" };
+            if (idx === 0) return { label: "根 CA", type: "danger" };
+            if (idx === total - 1) return { label: "服务证书", type: "success" };
+            return { label: "中间 CA", type: "warning" };
+        },
         async copyCertId() {
             const id = this.info?.certId || "";
             if (!id) return;
@@ -252,7 +288,6 @@ export default {
             }
             this.loading = true;
             try {
-                // 按 id 精确获取证书详情，不再依赖 list 全量返回
                 let cur = null;
                 try {
                     const raw = await withDelay(() => GetCert(id));
@@ -303,7 +338,6 @@ export default {
                 this.renewing = false;
             }
         },
-        // 新签：跳转到签发页，携带来源证书 id，由签发页拉 issuecfg 回填
         onNewIssue() {
             const id = this.$route.params.id;
             if (!id) return;
@@ -478,6 +512,15 @@ export default {
 .copy-btn:hover {
     color: #606266;
 }
+/* 证书链行内展示：斜线字符串 + 图标按钮 */
+.chain-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.chain-inline-text {
+    word-break: break-all;
+}
 .status-cell {
     display: flex;
     align-items: center;
@@ -526,5 +569,43 @@ export default {
     color: #303133;
     white-space: pre-wrap;
     word-break: break-all;
+}
+</style>
+
+<!-- 非 scoped：popover 内容 teleport 到 body，scoped 样式不生效 -->
+<style>
+.chain-popover {
+    padding: 12px;
+}
+.chain-popover .chain-tree {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 13px;
+    line-height: 1.9;
+    color: #303133;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.chain-popover .chain-line {
+    display: flex;
+    align-items: center;
+}
+.chain-popover .chain-branch {
+    color: #c0c4cc;
+    flex-shrink: 0;
+}
+.chain-popover .chain-node {
+    color: #606266;
+}
+.chain-popover .chain-leaf {
+    color: #409eff;
+    font-weight: 500;
+}
+.chain-popover .chain-level-tag {
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+.chain-popover .chain-type-tag {
+    margin-left: 6px;
+    flex-shrink: 0;
 }
 </style>
