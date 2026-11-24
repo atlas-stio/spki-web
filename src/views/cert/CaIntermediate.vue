@@ -7,17 +7,21 @@
             </div>
             <el-form ref="formRef" :model="form" :rules="rules" label-width="240px">
                 <el-form-item label="根 CA" prop="issuer.id">
-                    <el-select v-model="form.issuer.id" filterable clearable placeholder="选择根 CA" style="max-width: 600px" :loading="issuerLoading">
-                        <el-option v-for="ca in issuerOptions" :key="ca.certId" :label="ca.title || ca.subject || ca.certId" :value="ca.certId">
-                            <span>{{ ca.title || ca.subject || ca.certId }}</span>
-                            <span v-if="ca.key" style="float: right; color: #909399; font-size: 12px; margin-left: 8px">
-                                {{ (ca.key.algo || "").toUpperCase() }}{{ ca.key.size ? " " + ca.key.size : "" }}
-                            </span>
-                        </el-option>
-                        <template #empty>
-                            <el-empty description="暂无可用的父 CA" :image-size="60" />
-                        </template>
-                    </el-select>
+                    <div style="display: flex; gap: 8px; align-items: center; width: 100%; line-height: 1.2">
+                        <el-select v-model="form.issuer.id" filterable clearable placeholder="选择根 CA" style="flex: 1" :loading="issuerLoading">
+                            <el-option v-for="ca in issuerOptions" :key="ca.certId" :label="ca.title || ca.subject || ca.certId" :value="ca.certId">
+                                <span>{{ ca.title || ca.subject || ca.certId }}</span>
+                                <span v-if="ca.key" style="float: right; color: #909399; font-size: 12px; margin-left: 8px">
+                                    {{ "L" + ca.cdh }}· {{ (ca.key.algo || "").toUpperCase() }}{{ ca.key.size ? " " + ca.key.size : "" }}
+                                </span>
+                            </el-option>
+                            <template #empty>
+                                <el-empty description="暂无可用的父 CA" :image-size="60" />
+                            </template>
+                        </el-select>
+                        <el-button style="padding: 8px 10px" :icon="Refresh" :loading="issuerLoading" @click="loadIssuers" />
+                        <el-link href="/spki/#/ca/init" type="primary" target="_blank">初始化根CA</el-link>
+                    </div>
                 </el-form-item>
 
                 <el-form-item label="名称" prop="title">
@@ -95,9 +99,9 @@
                     </el-radio-group>
                 </el-form-item>
 
-                <el-form-item label="PathLen">
-                    <el-input-number v-model="form.pathLen" :min="0" :max="0" />
-                    <span style="margin-left: 8px; color: #909399; font-size: 12px"> 0 : 只能签发末端证书 </span>
+                <el-form-item label="下级CA层数 (PathLen)">
+                    <el-input-number v-model="form.pathLen" :min="0" :max="pathLenMax" />
+                    <span style="margin-left: 8px; color: #909399"> {{ pathLenHint }} </span>
                 </el-form-item>
 
                 <el-form-item>
@@ -191,6 +195,7 @@
 </template>
 
 <script>
+import { Refresh } from "@element-plus/icons-vue";
 import { IssueIntermediate, ListCert } from "../../api/cacert.js";
 import { msg } from "../../utils/message.ts";
 import CertMoreSubjectDialog from "./components/CertMoreSubjectDialog.vue";
@@ -256,6 +261,8 @@ const defaultSigFor = (algo, size) => {
     return "";
 };
 
+const MAX_CHAIN_DEPTH = 5;
+
 export default {
     name: "CaIntermediate",
     components: { CertMoreSubjectDialog },
@@ -267,6 +274,11 @@ export default {
             issuerLoading: false,
             subjectConfirmed: false,
             form: makeInitialForm(),
+        };
+    },
+    setup() {
+        return {
+            Refresh,
         };
     },
     computed: {
@@ -287,6 +299,18 @@ export default {
         },
         signatureAlgorithmOptions() {
             return buildSigOptions(this.issuerKeyAlgo);
+        },
+        currentCdh() {
+            const p = this.selectedIssuer?.cdh;
+            return typeof p === "number" && p > 0 ? p + 1 : 0;
+        },
+        pathLenMax() {
+            if (!this.currentCdh) return 0;
+            return Math.max(0, MAX_CHAIN_DEPTH - this.currentCdh);
+        },
+        pathLenHint() {
+            if (!this.currentCdh) return "请先选择父 CA";
+            return `[0 ~ ${this.pathLenMax}]`;
         },
         rules() {
             return {
